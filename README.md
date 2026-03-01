@@ -57,3 +57,17 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## EasyColoc Local Mail (Mailpit)
+
+1. Start Mailpit from Laragon (or install and run Mailpit manually).
+2. Keep SMTP settings in `.env`:
+   - `MAIL_MAILER=smtp`
+   - `MAIL_HOST=127.0.0.1`
+   - `MAIL_PORT=1025`
+3. Open Mailpit inbox UI: `http://127.0.0.1:8025`
+
+Quick manual test:
+1. Log in as a colocation owner.
+2. Submit `POST /colocations/{id}/invite-email` from the invitation form on the colocation page.
+3. Confirm the message appears in Mailpit inbox at `http://127.0.0.1:8025`.
