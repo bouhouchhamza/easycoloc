@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('colocations', function (Blueprint $table) {
-            $table->string('status')->default('active');
+            if (! Schema::hasColumn('colocations', 'status')) {
+                $table->string('status')->default('active');
+            }
         });
     }
 
@@ -22,7 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('colocations', function (Blueprint $table) {
-            //
+            if (Schema::hasColumn('colocations', 'status')) {
+                $table->dropColumn('status');
+            }
         });
     }
 };
