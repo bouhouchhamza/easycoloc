@@ -8,9 +8,11 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
+use Spatie\Permission\Models\Role;
 
 class RegisteredUserController extends Controller
 {
@@ -35,11 +37,25 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+        $user = DB::transaction(function () use ($request) {
+            $isFirstUser = User::query()->count() === 0;
+
+            Role::findOrCreate(User::ROLE_GLOBAL_ADMIN, 'web');
+            Role::findOrCreate(User::ROLE_USER, 'web');
+
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => $isFirstUser ? User::ROLE_GLOBAL_ADMIN : User::ROLE_USER,
+                'reputation' => 0,
+                'is_banned' => false,
+            ]);
+
+            $user->assignRole($isFirstUser ? User::ROLE_GLOBAL_ADMIN : User::ROLE_USER);
+
+            return $user;
+        });
 
         event(new Registered($user));
 
