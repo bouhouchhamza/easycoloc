@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('colocation_user', function (Blueprint $table) {
-            $table->timestamp('left_at')->nullable();
+            if (! Schema::hasColumn('colocation_user', 'left_at')) {
+                $table->timestamp('left_at')->nullable();
+            }
         });
     }
 
@@ -22,7 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('colocation_user', function (Blueprint $table) {
-            //
+            if (Schema::hasColumn('colocation_user', 'left_at')) {
+                $table->dropColumn('left_at');
+            }
         });
     }
 };
