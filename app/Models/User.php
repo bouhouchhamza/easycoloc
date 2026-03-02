@@ -79,7 +79,7 @@ class User extends Authenticatable
 
     public function expenses(): HasMany
     {
-        return $this->hasMany(Expense::class);
+        return $this->hasMany(Expense::class, 'user_id');
     }
 
     public function outgoingPayments(): HasMany
