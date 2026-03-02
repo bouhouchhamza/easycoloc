@@ -5,6 +5,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ColocationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettlementController;
@@ -12,6 +13,14 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+Route::get('/invitations/{token}', [InvitationController::class, 'landing'])
+    ->name('invitations.landing');
+
+Route::middleware(['auth', 'not_banned'])->group(function () {
+    Route::get('/invitations/{token}/accept', [InvitationController::class, 'accept'])
+        ->name('invitations.accept');
 });
 
 Route::middleware(['auth', 'verified', 'not_banned'])->group(function () {
