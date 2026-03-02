@@ -14,8 +14,8 @@
 
     <p>
         Or open this link:
-        <a href="{{ route('colocations.invite', $colocation->invite_token) }}">
-            {{ route('colocations.invite', $colocation->invite_token) }}
+        <a href="{{ route('invitations.landing', $colocation->invite_token) }}">
+            {{ route('invitations.landing', $colocation->invite_token) }}
         </a>
     </p>
 
