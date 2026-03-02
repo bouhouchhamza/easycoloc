@@ -61,6 +61,14 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        $pendingInvitationToken = $request->session()->get('pending_invitation_token');
+
+        if ($pendingInvitationToken) {
+            return redirect()->intended(
+                route('invitations.accept', ['token' => $pendingInvitationToken], absolute: false)
+            );
+        }
+
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 }
