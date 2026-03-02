@@ -10,6 +10,10 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request, DashboardService $service): View
     {
-        return view('dashboard', $service->forUser($request->user()));
+        $user = $request->user();
+
+        abort_unless($user !== null, 403);
+
+        return view('dashboard', $service->forUser($user));
     }
 }
