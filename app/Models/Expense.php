@@ -27,12 +27,17 @@ class Expense extends Model
 
     public function colocation(): BelongsTo
     {
-        return $this->belongsTo(Colocation::class);
+        return $this->belongsTo(Colocation::class, 'colocation_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function payer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->user();
     }
 
     public function category(): BelongsTo
