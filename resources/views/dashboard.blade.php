@@ -10,8 +10,13 @@
         </div>
 
         <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p class="text-sm text-slate-500">Total Expenses Paid</p>
+            <p class="text-sm text-slate-500">
+                {{ $activeColocation ? 'Total Expenses (Active Colocation)' : 'Total Expenses Paid (My Account)' }}
+            </p>
             <p class="mt-2 text-3xl font-bold text-slate-900">{{ number_format($myExpensesTotal, 2) }}</p>
+            @if ($activeColocation)
+                <p class="mt-1 text-xs text-slate-500">My paid amount: {{ number_format($myPaidInActiveColocation, 2) }}</p>
+            @endif
         </div>
 
         <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
