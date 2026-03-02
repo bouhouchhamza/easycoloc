@@ -5,11 +5,19 @@ namespace App\Services;
 use App\Models\Colocation;
 use App\Models\Expense;
 use App\Models\Payment;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class SettlementService
 {
     public function calculate(Colocation $colocation): array
+    {
+        return $this->calculateSettlement($colocation);
+    }
+
+    public function calculateSettlement(Colocation $colocation): array
     {
         $members = $colocation->activeUsers()
             ->select('users.id', 'users.name')
@@ -27,14 +35,95 @@ class SettlementService
             ];
         }
 
-        $memberIds = $members->pluck('id');
+        $memberIds = $members->pluck('id')
+            ->map(static fn ($id): int => (int) $id)
+            ->values();
 
-        $totalsPaid = Expense::query()
+        $joinedAtColumn = Schema::hasColumn('colocation_user', 'joined_at') ? 'joined_at' : 'created_at';
+
+        $membershipPeriods = [];
+        foreach ($memberIds as $memberId) {
+            $membershipPeriods[$memberId] = ['joined_at' => null, 'left_at' => null];
+        }
+
+        $memberships = DB::table('colocation_user')
             ->where('colocation_id', $colocation->id)
             ->whereIn('user_id', $memberIds)
-            ->selectRaw('user_id, SUM(amount) as total_amount')
-            ->groupBy('user_id')
-            ->pluck('total_amount', 'user_id');
+            ->selectRaw("user_id, {$joinedAtColumn} as joined_at, left_at")
+            ->get();
+
+        foreach ($memberships as $membership) {
+            $membershipPeriods[(int) $membership->user_id] = [
+                'joined_at' => $membership->joined_at ? Carbon::parse($membership->joined_at) : null,
+                'left_at' => $membership->left_at ? Carbon::parse($membership->left_at) : null,
+            ];
+        }
+
+        $totalsPaidCents = array_fill_keys($memberIds->all(), 0);
+        $totalsOwedCents = array_fill_keys($memberIds->all(), 0);
+
+        $expenses = Expense::query()
+            ->where('colocation_id', $colocation->id)
+            ->whereIn('user_id', $memberIds)
+            ->select(['id', 'colocation_id', 'user_id', 'amount', 'expense_date', 'created_at', 'category_id'])
+            ->orderByRaw('COALESCE(expense_date, created_at)')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($expenses as $expense) {
+            $hasExplicitExpenseDate = ! empty($expense->expense_date);
+            $expenseDate = $hasExplicitExpenseDate
+                ? Carbon::parse($expense->expense_date)->startOfDay()
+                : Carbon::parse($expense->created_at);
+
+            $activeMemberIds = $memberIds
+                ->filter(function (int $memberId) use ($membershipPeriods, $expenseDate, $hasExplicitExpenseDate): bool {
+                    $period = $membershipPeriods[$memberId] ?? ['joined_at' => null, 'left_at' => null];
+                    $joinedAt = $period['joined_at'];
+                    $leftAt = $period['left_at'];
+
+                    if ($hasExplicitExpenseDate) {
+                        $joinedAt = $joinedAt ? $joinedAt->copy()->startOfDay() : null;
+                        $leftAt = $leftAt ? $leftAt->copy()->endOfDay() : null;
+                    }
+
+                    if ($joinedAt !== null && $expenseDate->lt($joinedAt)) {
+                        return false;
+                    }
+
+                    if ($leftAt !== null && $expenseDate->gt($leftAt)) {
+                        return false;
+                    }
+
+                    return true;
+                })
+                ->sort()
+                ->values();
+
+            if ($activeMemberIds->isEmpty()) {
+                continue;
+            }
+
+            $amountCents = (int) round((float) $expense->amount * 100);
+            if ($amountCents <= 0) {
+                continue;
+            }
+
+            $payerId = (int) $expense->user_id;
+            $totalsPaidCents[$payerId] = ($totalsPaidCents[$payerId] ?? 0) + $amountCents;
+
+            $membersCount = $activeMemberIds->count();
+            $baseShareCents = intdiv($amountCents, $membersCount);
+            $remainderCents = $amountCents % $membersCount;
+
+            foreach ($activeMemberIds as $index => $memberId) {
+                $totalsOwedCents[$memberId] += $baseShareCents;
+
+                if ($index < $remainderCents) {
+                    $totalsOwedCents[$memberId] += 1;
+                }
+            }
+        }
 
         $outgoingPayments = Payment::query()
             ->where('colocation_id', $colocation->id)
@@ -50,30 +139,27 @@ class SettlementService
             ->groupBy('to_user_id')
             ->pluck('total_amount', 'to_user_id');
 
-        $totalExpenses = (float) $totalsPaid->sum();
-        $share = $totalExpenses / $members->count();
-
         $balances = [];
         $normalizedTotalsPaid = [];
 
         foreach ($memberIds as $memberId) {
-            $expensePaid = (float) ($totalsPaid[$memberId] ?? 0.0);
-            $paidOut = (float) ($outgoingPayments[$memberId] ?? 0.0);
-            $received = (float) ($incomingPayments[$memberId] ?? 0.0);
+            $expensePaidCents = $totalsPaidCents[$memberId] ?? 0;
+            $owedCents = $totalsOwedCents[$memberId] ?? 0;
+            $paidOutCents = (int) round((float) ($outgoingPayments[$memberId] ?? 0.0) * 100);
+            $receivedCents = (int) round((float) ($incomingPayments[$memberId] ?? 0.0) * 100);
 
-            $normalizedTotalsPaid[$memberId] = round($expensePaid, 2);
-            // Payments adjust balances:
-            // - payer (from_user) gets +amount because they settled part of their debt
-            // - receiver (to_user) gets -amount because they recovered part of their credit
-            $balances[$memberId] = round(($expensePaid + $paidOut - $received) - $share, 2);
+            $normalizedTotalsPaid[$memberId] = round($expensePaidCents / 100, 2);
+            $balances[$memberId] = round(($expensePaidCents + $paidOutCents - $receivedCents - $owedCents) / 100, 2);
         }
 
         $transfers = $this->simplifyBalances($balances, $members->pluck('name', 'id'));
 
         return [
             'members' => $members,
-            'total_expenses' => round($totalExpenses, 2),
-            'share_per_member' => round($share, 2),
+            'total_expenses' => round(array_sum($totalsPaidCents) / 100, 2),
+            'share_per_member' => $members->count() > 0
+                ? round((array_sum($totalsOwedCents) / 100) / $members->count(), 2)
+                : 0.0,
             'totals_paid' => $normalizedTotalsPaid,
             'balances' => $balances,
             'transfers' => $transfers,
