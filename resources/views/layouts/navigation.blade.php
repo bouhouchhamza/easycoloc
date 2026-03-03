@@ -12,7 +12,7 @@
                 <a href="{{ route('colocations.index') }}" class="text-sm font-medium {{ request()->routeIs('colocations.*') ? 'text-cyan-700' : 'text-slate-600 hover:text-slate-900' }}">
                     Colocations
                 </a>
-                @if (auth()->user()->isGlobalAdmin())
+                @if (auth()->user()->hasRole('global_admin'))
                     <a href="{{ route('admin.dashboard') }}" class="text-sm font-medium {{ request()->routeIs('admin.*') ? 'text-cyan-700' : 'text-slate-600 hover:text-slate-900' }}">
                         Admin
                     </a>
@@ -52,7 +52,7 @@
             <a href="{{ route('colocations.index') }}" class="rounded px-2 py-1 text-sm {{ request()->routeIs('colocations.*') ? 'bg-cyan-50 text-cyan-700' : 'text-slate-700' }}">
                 Colocations
             </a>
-            @if (auth()->user()->isGlobalAdmin())
+            @if (auth()->user()->hasRole('global_admin'))
                 <a href="{{ route('admin.dashboard') }}" class="rounded px-2 py-1 text-sm {{ request()->routeIs('admin.*') ? 'bg-cyan-50 text-cyan-700' : 'text-slate-700' }}">
                     Admin
                 </a>
