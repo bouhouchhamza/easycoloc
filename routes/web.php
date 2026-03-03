@@ -54,7 +54,7 @@ Route::middleware(['auth', 'verified', 'not_banned'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-Route::middleware(['auth', 'verified', 'not_banned', 'role:global_admin'])
+Route::middleware(['auth', 'role:global_admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
