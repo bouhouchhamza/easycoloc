@@ -23,7 +23,7 @@ class AdminService
 
     public function updateBanStatus(User $user, bool $isBanned): void
     {
-        if ($user->isGlobalAdmin()) {
+        if ($user->hasRole(User::ROLE_GLOBAL_ADMIN)) {
             throw ValidationException::withMessages([
                 'user' => 'Global admin cannot be banned.',
             ]);
