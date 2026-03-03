@@ -17,6 +17,7 @@ class User extends Authenticatable
     use HasRoles;
 
     public const ROLE_GLOBAL_ADMIN = 'global_admin';
+    public const ROLE_ADMIN = self::ROLE_GLOBAL_ADMIN;
     public const ROLE_USER = 'user';
 
     /**
@@ -28,7 +29,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
         'reputation',
         'is_banned',
     ];
@@ -92,7 +92,7 @@ class User extends Authenticatable
         return $this->hasMany(Payment::class, 'to_user_id');
     }
 
-    public function isGlobalAdmin(): bool
+    public function isAdmin(): bool
     {
         return $this->hasRole(self::ROLE_GLOBAL_ADMIN);
     }
