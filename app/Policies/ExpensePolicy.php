@@ -10,6 +10,10 @@ class ExpensePolicy
 {
     public function delete(User $user, Expense $expense): bool
     {
+        if ($user->hasRole('global_admin')) {
+            return true;
+        }
+
         if ((int) $expense->user_id === (int) $user->id) {
             return true;
         }
