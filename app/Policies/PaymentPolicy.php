@@ -10,6 +10,10 @@ class PaymentPolicy
 {
     public function create(User $user, Colocation $colocation): bool
     {
+        if ($user->hasRole('global_admin')) {
+            return true;
+        }
+
         return DB::table('colocation_user')
             ->where('colocation_id', $colocation->id)
             ->where('user_id', $user->id)
