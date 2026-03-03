@@ -47,7 +47,6 @@ class RegisteredUserController extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
-                'role' => $isFirstUser ? User::ROLE_GLOBAL_ADMIN : User::ROLE_USER,
                 'reputation' => 0,
                 'is_banned' => false,
             ]);
