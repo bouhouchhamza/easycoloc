@@ -44,7 +44,7 @@
                                 {{ $user->is_banned ? 'Banned' : 'Active' }}
                             </td>
                             <td class="px-4 py-3 text-right">
-                                @if (! $user->isGlobalAdmin())
+                                @if (! $user->hasRole('global_admin'))
                                     <form method="POST" action="{{ route('admin.users.ban-status', $user) }}">
                                         @csrf
                                         @method('PATCH')
