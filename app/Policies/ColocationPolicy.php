@@ -10,21 +10,37 @@ class ColocationPolicy
 {
     public function view(User $user, Colocation $colocation): bool
     {
+        if ($user->hasRole('global_admin')) {
+            return true;
+        }
+
         return $this->isActiveMember($user, $colocation);
     }
 
     public function update(User $user, Colocation $colocation): bool
     {
+        if ($user->hasRole('global_admin')) {
+            return true;
+        }
+
         return $this->isOwner($user, $colocation);
     }
 
     public function delete(User $user, Colocation $colocation): bool
     {
+        if ($user->hasRole('global_admin')) {
+            return true;
+        }
+
         return $this->isOwner($user, $colocation);
     }
 
     public function join(User $user): bool
     {
+        if ($user->hasRole('global_admin')) {
+            return true;
+        }
+
         return ! DB::table('colocation_user')
             ->join('colocations', 'colocations.id', '=', 'colocation_user.colocation_id')
             ->where('colocation_user.user_id', $user->id)
@@ -35,6 +51,10 @@ class ColocationPolicy
 
     public function leave(User $user, Colocation $colocation): bool
     {
+        if ($user->hasRole('global_admin')) {
+            return true;
+        }
+
         return $this->isActiveMember($user, $colocation)
             && ! $this->isOwner($user, $colocation);
     }
